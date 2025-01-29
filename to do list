@@ -1,0 +1,199 @@
+import tkinter as tk
+from tkinter import ttk
+import json
+from datetime import datetime
+import os
+
+class yapılacaklarlist:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("yapılacaklar list")
+        self.root.geometry("1200x1000")
+        self.root.configure(bg='black')
+        
+        # Data structure for tasks
+        self.days = ['pazartesi', 'sali', 'carsamba', 'persembe', 'cuma', 'cumertesi', 'pazar']
+        self.tasks = {day: [] for day in self.days}
+        
+        # Load saved tasks
+        self.load_tasks()
+        
+        # Styling
+        self.style = ttk.Style()
+        self.style.theme_use('default')
+        self.style.configure('Custom.TFrame', background='black')
+        self.style.configure('DayHeader.TLabel', 
+                           background='#2D1B69',
+                           foreground='white',
+                           font=('pink', 12, 'bold'),
+                           padding=10)
+        self.style.configure('Task.TFrame',
+                           background='#1F1F1F',
+                           relief='solid')
+        
+        # Create main layout
+        self.create_header()
+        self.create_input_area()
+        self.create_task_grid()
+        
+    def create_header(self):
+        """Create the header section with title"""
+        header_frame = ttk.Frame(self.root, style='Custom.TFrame')
+        header_frame.pack(fill='x', padx=20, pady=20)
+        
+        title = ttk.Label(header_frame,
+                         text="yapılacaklar list",
+                         font=('Arial', 24, 'bold'),
+                         foreground='#9D4EDD',
+                         background='black')
+        title.pack()
+        
+        subtitle = ttk.Label(header_frame,
+                           text="yapmayanin ben taa",
+                           font=('Arial', 12),
+                           foreground='#666666',
+                           background='black')
+        subtitle.pack()
+
+    def create_input_area(self):
+        """Create the input area for adding new tasks"""
+        input_frame = ttk.Frame(self.root, style='Custom.TFrame')
+        input_frame.pack(fill='x', padx=20, pady=10)
+        
+        # Day selector
+        self.day_var = tk.StringVar(value=self.days[0])
+        day_select = ttk.Combobox(input_frame,
+                                textvariable=self.day_var,
+                                values=self.days,
+                                state='readonly',
+                                width=15)
+        day_select.pack(side='left', padx=5)
+        
+        # Task input
+        self.task_entry = ttk.Entry(input_frame, width=50)
+        self.task_entry.pack(side='left', padx=5)
+        
+        # Add button
+        add_button = ttk.Button(input_frame,
+                              text="kaydet",
+                              command=self.add_task)
+        add_button.pack(side='left', padx=5)
+
+    def create_task_grid(self):
+        """Create the grid of daily task lists"""
+        self.grid_frame = ttk.Frame(self.root, style='Custom.TFrame')
+        self.grid_frame.pack(fill='both', expand=True, padx=20, pady=10)
+        
+        # Configure grid columns
+        for i in range(7):
+            self.grid_frame.columnconfigure(i, weight=1)
+        
+        # Create day columns
+        for i, day in enumerate(self.days):
+            # Day header
+            day_frame = ttk.Frame(self.grid_frame, style='Custom.TFrame')
+            day_frame.grid(row=0, column=i, sticky='nsew', padx=5)
+            
+            day_label = ttk.Label(day_frame,
+                                text=day,
+                                style='DayHeader.TLabel')
+            day_label.pack(fill='x')
+            
+            # Task list for the day
+            task_list = tk.Frame(day_frame, bg='#1F1F1F')
+            task_list.pack(fill='both', expand=True)
+            
+            # Store reference to task list
+            setattr(self, f'{day.lower()}_list', task_list)
+        
+        self.refresh_tasks()
+
+    def add_task(self):
+        """Add a new task to the selected day"""
+        day = self.day_var.get()
+        task_text = self.task_entry.get().strip()
+        
+        if task_text:
+            self.tasks[day].append({
+                'id': datetime.now().timestamp(),
+                'text': task_text,
+                'completed': False
+            })
+            self.task_entry.delete(0, tk.END)
+            self.save_tasks()
+            self.refresh_tasks()
+
+    def toggle_task(self, day, task_id):
+        """Toggle the completion status of a task"""
+        for task in self.tasks[day]:
+            if task['id'] == task_id:
+                task['completed'] = not task['completed']
+                break
+        self.save_tasks()
+        self.refresh_tasks()
+
+    def delete_task(self, day, task_id):
+        """Delete a task"""
+        self.tasks[day] = [task for task in self.tasks[day] if task['id'] != task_id]
+        self.save_tasks()
+        self.refresh_tasks()
+
+    def refresh_tasks(self):
+        """Refresh the display of all tasks"""
+        for day in self.days:
+            task_list = getattr(self, f'{day.lower()}_list')
+            
+            # Clear existing tasks
+            for widget in task_list.winfo_children():
+                widget.destroy()
+            
+            # Add tasks for this day
+            if not self.tasks[day]:
+                empty_label = ttk.Label(task_list,
+                                      text=f"yapılacak birsey yok {day}",
+                                      foreground='#666666',
+                                      background='#1F1F1F')
+                empty_label.pack(pady=10)
+            
+            for task in self.tasks[day]:
+                task_frame = ttk.Frame(task_list, style='Task.TFrame')
+                task_frame.pack(fill='x', padx=5, pady=2)
+                
+                # Checkbox
+                checkbox_var = tk.BooleanVar(value=task['completed'])
+                checkbox = ttk.Checkbutton(task_frame,
+                                         variable=checkbox_var,
+                                         command=lambda d=day, t=task['id']: self.toggle_task(d, t))
+                checkbox.pack(side='left', padx=5)
+                
+                # Task text
+                text_color = '#666666' if task['completed'] else 'white'
+                task_label = ttk.Label(task_frame,
+                                     text=task['text'],
+                                     foreground=text_color,
+                                     background='#1F1F1F')
+                task_label.pack(side='left', fill='x', expand=True, padx=5)
+                
+                # Delete button
+                delete_btn = ttk.Button(task_frame,
+                                      text="×",
+                                      command=lambda d=day, t=task['id']: self.delete_task(d, t))
+                delete_btn.pack(side='right', padx=5)
+
+    def save_tasks(self):
+        """Save tasks to a JSON file"""
+        with open('tasks.json', 'w') as f:
+            json.dump(self.tasks, f)
+
+    def load_tasks(self):
+        """Load tasks from JSON file"""
+        try:
+            with open('tasks.json', 'r') as f:
+                self.tasks = json.load(f)
+        except FileNotFoundError:
+            pass
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = yapılacaklarlist(root)
+    root.mainloop()
