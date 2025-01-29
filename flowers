@@ -1,0 +1,22 @@
+from turtle import *
+import colorsys
+
+speed(0)  # Çizim hızını en hızlı yap
+bgcolor("black")  # Arka plan rengini siyah yap
+h = 0  # Başlangıç için renk tonu (hue)
+
+# Dış döngü
+for i in range(16):  # 16 kez tekrarlamak için dış döngü
+    # İç döngü
+    for j in range(18):  # 18 kez tekrarlamak için iç döngü
+        c = colorsys.hsv_to_rgb(h, 1, 1)  # HSV'den RGB'ye dönüşüm yap
+        color(c)  # Rengi ayarla
+        h += 0.005  # Hue değerini arttırarak renk geçişi yap
+        rt(90)  # 90 derece sağa dön
+        circle(150 - j * 6, 90)  # Yarıçapı 150 - j*6 olan bir yay çiz (90 derece)
+        lt(90)  # 90 derece sola dön
+        circle(150 - j * 6, 90)  # Yine aynı yay çiz
+        rt(180)  # 180 derece sağa dön
+    circle(40, 24)  # Küçük bir daire çiz (orta kısmı)
+    
+done()  # Çizimi bitir
